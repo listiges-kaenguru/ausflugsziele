@@ -14,6 +14,10 @@ Solange die Version unter 1.0.0 liegt, können sich Datenmodell und API jederzei
   (API-Parameter `tag[]`, mehrfach angebbar; `tag=<name>` funktioniert weiterhin).
 - Hinweistext unter dem Link-Feld mit Beispielen.
 
+### Behoben
+- Fehlen dem Webserver Schreibrechte für `data/`, zeigt die App jetzt eine verständliche Meldung statt
+  „Interner Fehler“. README um Befehle für Rechte und SELinux sowie einen Abschnitt zur Fehlersuche ergänzt.
+
 ### Geändert
 - Das Feld „Google Maps Link“ heißt jetzt „Link“ und ist für beliebige Webadressen gedacht
   (z. B. OpenStreetMap, Komoot oder die Webseite des Ziels). Der Button auf der Detailseite heißt
