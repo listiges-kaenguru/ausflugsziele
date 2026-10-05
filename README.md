@@ -6,6 +6,8 @@ Progressive Web App zur Verwaltung persönlicher Ausflugsziele.
 > **Dieses Projekt befindet sich noch in der Entwicklung.**
 > Funktionen, Datenmodell und API können sich jederzeit ohne Vorankündigung ändern.
 
+Aktuelle Version: **0.0.1** – siehe [CHANGELOG](CHANGELOG.md).
+
 Die App kommt ohne npm, Composer, Build-Schritt und externe Bibliotheken aus:
 das Frontend ist reines HTML/CSS/JavaScript, das Backend reines PHP mit SQLite.
 
@@ -58,7 +60,7 @@ php -S localhost:8000
 Danach http://localhost:8000 öffnen. Achtung: Der eingebaute Server beachtet keine `.htaccess`-Dateien –
 nur für die Entwicklung verwenden.
 
-Optional Demo-Daten anlegen (Admin `admin / admin123`, Benutzer `demo / demo123`):
+Optional Demo-Daten anlegen (Benutzer `admin` und `demo` mit zufälligen Passwörtern, die einmalig angezeigt werden):
 
 ```sh
 php server/cli.php seed-demo
@@ -79,7 +81,7 @@ Alle Daten liegen in `data/`:
 Für ein Backup genügt es, diesen Ordner zu kopieren (am besten, während niemand die App benutzt).
 Zum Wiederherstellen den Ordner zurückkopieren.
 
-### Umstieg von Version 0.1.0 (Node.js)
+### Umstieg von der früheren Next.js-Fassung
 Eine SQLite-Datenbank der früheren Node.js-Version (`dev.db`) kann direkt als `data/app.db`
 weiterverwendet werden; bestehende Passwörter bleiben gültig. Bereits hochgeladene Bilder aus
 `public/uploads/` nach `data/uploads/` verschieben. Details im [CHANGELOG](CHANGELOG.md).

@@ -563,6 +563,7 @@ async function profilePage() {
     h("div", { class: "card" }, h("h2", null, "Passwort ändern"), passwordForm),
     tagSection,
     userSection,
+    session.version ? h("p", { class: "muted small" }, `Ausflugsziele ${session.version}`) : null,
   ];
 }
 
@@ -607,7 +608,7 @@ function setupPage() {
 
 // ---------------------------------------------------------------- Router
 
-const session = { user: null, needsSetup: false, loaded: false };
+const session = { user: null, needsSetup: false, version: null, loaded: false };
 
 const routes = [
   [/^\/$/, "dashboard", dashboardPage],

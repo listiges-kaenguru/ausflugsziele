@@ -21,7 +21,7 @@ Voraussetzung ist PHP 8.1 oder neuer.
 ```sh
 git clone https://github.com/listiges-kaenguru/ausflugsziele.git
 cd ausflugsziele
-php server/cli.php seed-demo   # optional: admin/admin123, demo/demo123
+php server/cli.php seed-demo   # optional: legt admin und demo an und zeigt die Passwörter an
 php -S localhost:8000
 ```
 
@@ -82,6 +82,18 @@ docker run --rm -p 8080:80 -v "$PWD":/var/www/html php:8.1-apache
 - Für jede Änderung einen eigenen Branch von `main` anlegen.
 - Commit-Nachrichten auf Deutsch, erste Zeile im Imperativ und kurz (≤ 72 Zeichen),
   z. B. `Bildergalerie auf der Detailseite vergrößern`.
+
+## Neue Version veröffentlichen
+
+Versionen folgen [Semantic Versioning](https://semver.org/lang/de/) und werden als Git-Tag `vX.Y.Z` markiert.
+
+1. `APP_VERSION` in `server/bootstrap.php` und die Versionsangabe im README erhöhen.
+2. Im CHANGELOG `## [Unveröffentlicht]` in `## [X.Y.Z] – JJJJ-MM-TT` umbenennen und den Link am Ende ergänzen.
+3. Committen, auf `main` mergen und taggen:
+   ```sh
+   git tag -a vX.Y.Z -m "Version X.Y.Z"
+   git push origin main vX.Y.Z
+   ```
 
 ## Sicherheitslücken
 

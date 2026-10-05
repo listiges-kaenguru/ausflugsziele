@@ -4,6 +4,7 @@
 
 declare(strict_types=1);
 
+const APP_VERSION = '0.0.1';
 const SESSION_LIFETIME = 60 * 60 * 24 * 7;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = [

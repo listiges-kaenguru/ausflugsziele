@@ -100,7 +100,7 @@ function sign_in(array $user): void
 
 function me(): never
 {
-    respond(['user' => current_user(), 'needsSetup' => needs_setup()]);
+    respond(['user' => current_user(), 'needsSetup' => needs_setup(), 'version' => APP_VERSION]);
 }
 
 // Legt beim ersten Aufruf den Admin-Zugang an (ersetzt die festen Seed-Zugangsdaten).

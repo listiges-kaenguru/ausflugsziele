@@ -3,7 +3,7 @@
 //   php server/cli.php create-user <benutzername> <passwort> [ADMIN|USER]
 //   php server/cli.php set-password <benutzername> <passwort>
 //   php server/cli.php list-users
-//   php server/cli.php seed-demo        (nur für die lokale Entwicklung)
+//   php server/cli.php seed-demo        (nur für die lokale Entwicklung, gibt zufällige Passwörter aus)
 
 declare(strict_types=1);
 
@@ -47,7 +47,7 @@ switch ($command) {
 
     case 'seed-demo':
         seed_demo();
-        echo "Demo-Daten angelegt (admin / admin123, demo / demo123).\n";
+        echo "Demo-Daten angelegt.\n";
         break;
 
     default:
@@ -59,11 +59,14 @@ function seed_demo(): void
 {
     $timestamp = now();
     $userIds = [];
-    foreach (['admin' => ['admin123', 'ADMIN'], 'demo' => ['demo123', 'USER']] as $username => [$password, $role]) {
+    foreach (['admin' => 'ADMIN', 'demo' => 'USER'] as $username => $role) {
         $stmt = db()->prepare('SELECT id FROM "User" WHERE username = ?');
         $stmt->execute([$username]);
         $userIds[$username] = $stmt->fetchColumn() ?: null;
         if ($userIds[$username] === null) {
+            // Keine festen Zugangsdaten im Code: Passwort zufällig erzeugen und einmalig anzeigen.
+            $password = bin2hex(random_bytes(6));
+            echo "Benutzer $username ($role) angelegt, Passwort: $password\n";
             $userIds[$username] = uuid();
             db()->prepare('INSERT INTO "User" (id, username, passwordHash, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)')
                 ->execute([$userIds[$username], $username, hash_password($password), $role, $timestamp, $timestamp]);

@@ -6,9 +6,9 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Version unter 1.0.0 liegt, können sich Datenmodell und API jederzeit ändern.
 
-## [0.2.0] – 2026-10-05
+## [0.0.1] – 2026-10-05
 
-Die App läuft jetzt ohne npm, Framework und Build-Schritt auf jedem Webserver mit PHP 8.1+.
+Erste versionierte Veröffentlichung. Die App läuft jetzt ohne npm, Framework und Build-Schritt auf jedem Webserver mit PHP 8.1+.
 
 ### Geändert
 - Frontend von Next.js/React auf reines HTML, CSS und JavaScript umgestellt (Single-Page-App mit Hash-Routing).
@@ -35,7 +35,7 @@ Die App läuft jetzt ohne npm, Framework und Build-Schritt auf jedem Webserver m
 ### Entfernt
 - Next.js, React, Prisma, Tailwind und alle weiteren npm-Abhängigkeiten.
 - Docker-Setup und PostgreSQL-Konfiguration.
-- Feste Standard-Zugangsdaten aus dem Seed.
+- Feste Standard-Zugangsdaten aus dem Seed; `seed-demo` erzeugt zufällige Passwörter.
 
 ### Sicherheit
 - Bilder werden nicht mehr öffentlich unter `public/uploads` abgelegt, sondern nur an den Eigentümer des Ziels ausgeliefert.
@@ -45,15 +45,14 @@ Die App läuft jetzt ohne npm, Framework und Build-Schritt auf jedem Webserver m
 - Schreibende API-Anfragen erfordern den Header `X-Requested-With: fetch` (CSRF-Schutz).
 - Das Login-Rate-Limit nutzt die echte Client-Adresse statt des fälschbaren `X-Forwarded-For`-Headers und gilt auch bei mehreren PHP-Prozessen.
 
-### Migration von 0.1.0
+### Umstieg von der früheren Next.js-Fassung
 - Eine bestehende SQLite-Datenbank (`dev.db`) kann als `data/app.db` weiterverwendet werden; Passwörter bleiben gültig.
 - Bisher hochgeladene Bilder aus `public/uploads/` nach `data/uploads/` verschieben.
 - PostgreSQL-Datenbanken werden nicht mehr unterstützt.
 
-## [0.1.0] – 2026-07-18
+## Vor 0.0.1
 
-### Hinzugefügt
-- Erste Version als Next.js-PWA mit Prisma, Login, Ausflugszielen, Tags und Bild-Upload-API.
+Ursprüngliche, nicht versionierte Fassung als Next.js-PWA mit Prisma, Login, Ausflugszielen, Tags und
+Bild-Upload-API (Commit [`96d0982`](https://github.com/listiges-kaenguru/ausflugsziele/commit/96d0982)).
 
-[0.2.0]: https://github.com/listiges-kaenguru/ausflugsziele/compare/96d0982...v0.2.0
-[0.1.0]: https://github.com/listiges-kaenguru/ausflugsziele/commit/96d0982
+[0.0.1]: https://github.com/listiges-kaenguru/ausflugsziele/releases/tag/v0.0.1
