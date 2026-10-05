@@ -7,15 +7,6 @@
 *.db-journal
 .env*
 
-# Überbleibsel der früheren Node.js-Version
-/node_modules
-/.next/
-next-env.d.ts
-
 # misc
 .DS_Store
 *.pem
-
-# versehentlich angelegte Artefakte (fehlerhafte DATABASE_URL)
-/home/
-/postgresql:/
