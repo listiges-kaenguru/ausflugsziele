@@ -1,5 +1,8 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# Hinweise für Coding-Agents
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+Die App läuft bewusst **ohne Abhängigkeiten und ohne Build-Schritt** auf einem einfachen Webserver mit PHP:
+
+- Kein npm, Composer, Framework oder Bundler einführen. Nur PHP-Bordmittel (PHP 8.1+, PDO SQLite) und Browser-APIs verwenden.
+- Frontend: `index.html`, `assets/app.js` (Vanilla JS, Hash-Routing), `assets/app.css`. Benutzereingaben nie per `innerHTML` einfügen – immer `h()` verwenden.
+- Backend: `api.php` (Router + Endpunkte), `server/` (Bootstrap, Validierung, CLI). Das DB-Schema muss mit bestehenden Datenbanken kompatibel bleiben (Änderungen nur additiv in `migrate()`).
+- Lokal testen: `php -S localhost:8000`.

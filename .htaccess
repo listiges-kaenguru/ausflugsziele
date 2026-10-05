@@ -1,0 +1,31 @@
+DirectoryIndex index.html
+Options -Indexes
+
+# Versteckte Dateien (.git, .env, …) und Datenbanken nicht ausliefern
+<FilesMatch "(^\.|\.(db|sqlite|md)$)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Deny from all
+    </IfModule>
+</FilesMatch>
+RedirectMatch 404 /\.git
+
+AddType application/manifest+json .webmanifest
+
+# Gleiche PHP-Einstellungen wie in .user.ini, falls PHP als Apache-Modul läuft
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_flag log_errors On
+    php_value upload_max_filesize 10M
+    php_value post_max_size 12M
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Header always set Content-Security-Policy "default-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+</IfModule>
