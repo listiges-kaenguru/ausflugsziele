@@ -292,6 +292,15 @@ function list_destinations(): never
         }
     }
 
+    $minRating = $_GET['minRating'] ?? '';
+    if ($minRating !== '') {
+        if (!is_string($minRating) || filter_var($minRating, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 5]]) === false) {
+            fail(400, 'VALIDATION_ERROR', 'Mindestbewertung muss zwischen 1 und 5 liegen');
+        }
+        $sql .= ' AND rating >= ?';
+        $params[] = (int) $minRating;
+    }
+
     $stmt = db()->prepare($sql . ' ORDER BY createdAt DESC');
     $stmt->execute($params);
     $destinations = load_destinations($stmt->fetchAll());
@@ -309,11 +318,12 @@ function list_destinations(): never
         });
     }
 
-    $tag = (string) ($_GET['tag'] ?? '');
-    if ($tag !== '') {
+    // tag=Name oder mehrfach tag[]=Name: Treffer müssen alle angegebenen Tags haben.
+    $tags = array_filter((array) ($_GET['tag'] ?? []), fn ($tag) => is_string($tag) && $tag !== '');
+    if ($tags) {
         $destinations = array_filter(
             $destinations,
-            fn (array $destination) => in_array($tag, array_column($destination['tags'], 'name'), true),
+            fn (array $destination) => !array_diff($tags, array_column($destination['tags'], 'name')),
         );
     }
 

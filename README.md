@@ -96,7 +96,7 @@ Schreibende Anfragen benötigen den Header `X-Requested-With: fetch`.
 | GET | `me` | Angemeldeter Benutzer und ob die Ersteinrichtung aussteht |
 | POST | `setup` | Ersten Admin anlegen (nur solange es keine Benutzer gibt) |
 | POST | `login`, `logout`, `change-password` | Anmeldung und Passwort |
-| GET/POST | `destinations` | Ziele auflisten (Filter: `search`, `favorite`, `visited`, `tag`) / anlegen |
+| GET/POST | `destinations` | Ziele auflisten (Filter: `search`, `favorite`, `visited`, `minRating` (1–5), `tag[]` – mehrfach angebbar, Treffer haben alle Tags) / anlegen |
 | GET/PUT/DELETE | `destinations/<id>` | Ziel lesen / ändern / löschen |
 | GET/POST | `tags` | Tags auflisten / anlegen |
 | PUT/DELETE | `tags/<id>` | Tag umbenennen / löschen (nur Admin) |

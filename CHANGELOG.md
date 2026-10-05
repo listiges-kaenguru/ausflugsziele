@@ -6,6 +6,20 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Version unter 1.0.0 liegt, können sich Datenmodell und API jederzeit ändern.
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+- Suche: Filter nach Mindestbewertung (API-Parameter `minRating`).
+- Suche: Mehrere Tags gleichzeitig auswählbar; angezeigt werden Ziele, die alle ausgewählten Tags haben
+  (API-Parameter `tag[]`, mehrfach angebbar; `tag=<name>` funktioniert weiterhin).
+- Hinweistext unter dem Link-Feld mit Beispielen.
+
+### Geändert
+- Das Feld „Google Maps Link“ heißt jetzt „Link“ und ist für beliebige Webadressen gedacht
+  (z. B. OpenStreetMap, Komoot oder die Webseite des Ziels). Der Button auf der Detailseite heißt
+  „Link öffnen“ und zeigt die Ziel-Domain. Feldname in API und Datenbank bleibt `googleMapsLink`.
+- Die Suchfilter stehen ab mittlerer Bildschirmbreite nebeneinander.
+
 ## [0.0.1] – 2026-10-05
 
 Erste versionierte Veröffentlichung. Die App läuft jetzt ohne npm, Framework und Build-Schritt auf jedem Webserver mit PHP 8.1+.
