@@ -6,6 +6,16 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Version unter 1.0.0 liegt, können sich Datenmodell und API jederzeit ändern.
 
+## [0.0.3] – 2026-10-05
+
+### Hinzugefügt
+- Eigenes App-Icon (Kompass im Stil der App) mit der Quelldatei `icon.svg`, die modernen Browsern
+  auch direkt als Favicon dient.
+
+### Behoben
+- Die App-Icons `icon-192.png` und `icon-512.png` waren leere Dateien; Startbildschirm- und Tab-Icon fehlten.
+- `favicon.ico` enthielt noch das Vercel-Logo aus der Next.js-Vorlage.
+
 ## [0.0.2] – 2026-10-05
 
 ### Hinzugefügt
@@ -73,5 +83,6 @@ Erste versionierte Veröffentlichung. Die App läuft jetzt ohne npm, Framework u
 Ursprüngliche, nicht versionierte Fassung als Next.js-PWA mit Prisma, Login, Ausflugszielen, Tags und
 Bild-Upload-API (Commit [`96d0982`](https://github.com/listiges-kaenguru/ausflugsziele/commit/96d0982)).
 
+[0.0.3]: https://github.com/listiges-kaenguru/ausflugsziele/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/listiges-kaenguru/ausflugsziele/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/listiges-kaenguru/ausflugsziele/releases/tag/v0.0.1

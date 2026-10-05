@@ -83,6 +83,21 @@ docker run --rm -p 8080:80 -v "$PWD":/var/www/html php:8.1-apache
 - Commit-Nachrichten auf Deutsch, erste Zeile im Imperativ und kurz (≤ 72 Zeichen),
   z. B. `Bildergalerie auf der Detailseite vergrößern`.
 
+## App-Icons
+
+Quelle aller Icons ist `icon.svg`. Nach Änderungen daran `icon-192.png` und `icon-512.png` neu erzeugen,
+z. B. mit einem Chromium-basierten Browser (im selben Ordner wie `icon.svg`):
+
+```sh
+for n in 192 512; do
+  printf '<style>html,body{margin:0}img{display:block;width:%spx}</style><img src="icon.svg">' $n > /tmp/icon.html
+  cp icon.svg /tmp/ && chromium --headless --default-background-color=00000000 --hide-scrollbars \
+    --force-device-scale-factor=1 --window-size=$n,$n --screenshot=icon-$n.png /tmp/icon.html
+done
+```
+
+`favicon.ico` enthält dieselbe Grafik in 16, 32 und 48 Pixeln (PNG-Einträge).
+
 ## Neue Version veröffentlichen
 
 Versionen folgen [Semantic Versioning](https://semver.org/lang/de/) und werden als Git-Tag `vX.Y.Z` markiert.
