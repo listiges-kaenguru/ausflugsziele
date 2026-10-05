@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Ausflugsziele</title>
+  <meta name="description" content="Persönliche Sammlung von Ausflugszielen">
+  <meta name="theme-color" content="#10b981">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" href="icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="assets/app.css">
+  <script src="assets/app.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <main id="app" class="page" aria-live="polite">
+      <p class="muted">Lade …</p>
+    </main>
+  </div>
+  <nav id="nav" class="nav" hidden>
+    <div class="nav-inner">
+      <a href="#/" data-route="dashboard"><span data-icon="compass"></span>Dashboard</a>
+      <a href="#/new" data-route="new"><span data-icon="plus"></span>Hinzufügen</a>
+      <a href="#/search" data-route="search"><span data-icon="search"></span>Suche</a>
+      <a href="#/profile" data-route="profile"><span data-icon="user"></span>Profil</a>
+    </div>
+  </nav>
+  <noscript><p class="page">Diese App benötigt JavaScript.</p></noscript>
+</body>
+</html>
