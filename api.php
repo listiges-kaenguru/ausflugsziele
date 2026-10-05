@@ -3,6 +3,10 @@
 
 declare(strict_types=1);
 
+// PHP-Warnungen gehören ins Fehlerprotokoll, nicht in die JSON-Antwort.
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+
 require __DIR__ . '/server/bootstrap.php';
 require __DIR__ . '/server/validation.php';
 
@@ -426,6 +430,10 @@ function delete_tag(string $id): never
 
 function upload_image(): never
 {
+    // Überschreitet die Anfrage post_max_size, verwirft PHP $_POST und $_FILES komplett.
+    if (!$_POST && !$_FILES && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+        fail(400, 'VALIDATION_ERROR', 'Das Bild ist zu groß für die Server-Einstellungen (post_max_size)');
+    }
     $destination = own_destination((string) ($_POST['destinationId'] ?? ''));
     $file = $_FILES['file'] ?? null;
 

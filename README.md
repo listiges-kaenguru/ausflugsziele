@@ -27,6 +27,9 @@ Für den Betrieb im Internet unbedingt HTTPS verwenden.
 Die mitgelieferten `.htaccess`-Dateien sperren `server/` und `data/` und setzen Sicherheits-Header.
 Dafür muss `AllowOverride All` (mindestens `AuthConfig FileInfo Indexes Options`) erlaubt sein.
 
+PHP-Einstellungen (Fehlerausgabe aus, Uploads bis 10 MB) stehen in `.user.ini` (PHP-FPM/CGI)
+bzw. in `.htaccess` (mod_php). Lässt der Hoster das nicht zu, die Werte in dessen Verwaltungsoberfläche setzen.
+
 ### nginx
 nginx liest keine `.htaccess`-Dateien. Die internen Ordner müssen selbst gesperrt werden:
 
@@ -76,8 +79,10 @@ Alle Daten liegen in `data/`:
 Für ein Backup genügt es, diesen Ordner zu kopieren (am besten, während niemand die App benutzt).
 Zum Wiederherstellen den Ordner zurückkopieren.
 
+### Umstieg von Version 0.1.0 (Node.js)
 Eine SQLite-Datenbank der früheren Node.js-Version (`dev.db`) kann direkt als `data/app.db`
-weiterverwendet werden; bestehende Passwörter bleiben gültig.
+weiterverwendet werden; bestehende Passwörter bleiben gültig. Bereits hochgeladene Bilder aus
+`public/uploads/` nach `data/uploads/` verschieben. Details im [CHANGELOG](CHANGELOG.md).
 
 ## API
 Alle Endpunkte liegen unter `api.php?r=<pfad>` und antworten mit
@@ -103,6 +108,10 @@ Schreibende Anfragen benötigen den Header `X-Requested-With: fetch`.
 - `api.php` – JSON-API
 - `server/` – PHP-Hilfsfunktionen, Validierung und Kommandozeilen-Skript
 - `data/` – Datenbank, Sessions und Uploads (wird automatisch angelegt, nicht öffentlich)
+
+## Mitwirken
+Hinweise zur Entwicklung und zu Beiträgen stehen in [CONTRIBUTING.md](CONTRIBUTING.md),
+Änderungen zwischen den Versionen im [CHANGELOG](CHANGELOG.md).
 
 ## Lizenz
 Copyright (C) 2026 listiges-kaenguru
