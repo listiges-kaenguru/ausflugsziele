@@ -4,7 +4,7 @@
 
 declare(strict_types=1);
 
-const APP_VERSION = '0.0.1';
+const APP_VERSION = '0.0.2';
 const SESSION_LIFETIME = 60 * 60 * 24 * 7;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = [
@@ -18,14 +18,31 @@ function data_dir(): string
 {
     static $dir = null;
     if ($dir === null) {
-        $dir = getenv('AUSFLUGSZIELE_DATA_DIR') ?: dirname(__DIR__) . '/data';
-        foreach ([$dir, "$dir/uploads", "$dir/sessions"] as $path) {
-            if (!is_dir($path) && !mkdir($path, 0770, true) && !is_dir($path)) {
-                throw new RuntimeException("Verzeichnis $path konnte nicht angelegt werden");
+        $path = getenv('AUSFLUGSZIELE_DATA_DIR') ?: dirname(__DIR__) . '/data';
+        // SQLite braucht Schreibrechte auf Datei und Verzeichnis (für das Journal).
+        foreach ([$path, "$path/uploads", "$path/sessions", "$path/app.db"] as $entry) {
+            $isFile = str_ends_with($entry, '.db');
+            if (!$isFile && !is_dir($entry)) {
+                @mkdir($entry, 0770, true);
+            }
+            if (($isFile && file_exists($entry) && !is_writable($entry)) || (!$isFile && (!is_dir($entry) || !is_writable($entry)))) {
+                data_dir_error($entry);
             }
         }
+        $dir = $path;
     }
     return $dir;
+}
+
+/** Meldet fehlende Schreibrechte verständlich, statt nur „Interner Fehler“ anzuzeigen. */
+function data_dir_error(string $path): never
+{
+    $user = function_exists('posix_geteuid') && function_exists('posix_getpwuid')
+        ? (posix_getpwuid(posix_geteuid())['name'] ?? (string) posix_geteuid())
+        : 'unbekannt';
+    error_log("Ausflugsziele: Keine Schreibrechte für $path (PHP läuft als Benutzer $user)");
+    $where = getenv('AUSFLUGSZIELE_DATA_DIR') ? 'das Datenverzeichnis (AUSFLUGSZIELE_DATA_DIR)' : 'den Ordner data/';
+    throw new ApiException(500, 'SETUP_ERROR', "Der Webserver darf nicht in $where schreiben. Bitte Schreibrechte für den Webserver-Benutzer vergeben (siehe README, Abschnitt Installation).");
 }
 
 function db(): PDO

@@ -52,7 +52,11 @@ class ApiError extends Error {
 
 /** Ruft die PHP-API auf und liefert `data` zurück oder wirft einen ApiError. */
 async function api(route, { method = "GET", body, query } = {}) {
-  const params = new URLSearchParams({ r: route, ...query });
+  // Arrays werden als key[]=…&key[]=… übertragen, damit PHP sie als Liste erhält.
+  const params = new URLSearchParams([
+    ["r", route],
+    ...Object.entries(query ?? {}).flatMap(([key, value]) => (Array.isArray(value) ? value.map((item) => [`${key}[]`, item]) : [[key, value]])),
+  ]);
   const headers = { "X-Requested-With": "fetch" };
   if (body !== undefined && !(body instanceof FormData)) {
     headers["Content-Type"] = "application/json";
@@ -118,8 +122,15 @@ function bindForm(form, handler) {
   };
 }
 
-function field(label, input) {
-  return h("label", { class: "field" }, label, input);
+let hintCounter = 0;
+
+/** Beschriftetes Eingabefeld; ein optionaler Hinweis wird per aria-describedby mit dem Feld verknüpft. */
+function field(label, input, hint) {
+  if (!hint) return h("label", { class: "field" }, label, input);
+  const id = `field-${++hintCounter}`;
+  input.id = id;
+  input.setAttribute("aria-describedby", `${id}-hint`);
+  return h("div", { class: "field" }, h("label", { for: id }, label), input, h("span", { id: `${id}-hint`, class: "hint" }, hint));
 }
 
 function pageHeader(eyebrow, title, action) {
@@ -128,6 +139,15 @@ function pageHeader(eyebrow, title, action) {
 
 function isSafeUrl(url) {
   return /^https?:\/\//i.test(url ?? "");
+}
+
+/** Kurzform der Domain für Link-Buttons, z. B. „openstreetmap.org“. */
+function linkHost(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
 }
 
 // ---------------------------------------------------------------- Komponenten
@@ -216,7 +236,11 @@ function destinationForm(destination, tags) {
     { class: "card" },
     field("Name", h("input", { type: "text", name: "name", value: destination?.name ?? "", required: true, maxlength: "200" })),
     field("Adresse", h("input", { type: "text", name: "address", value: destination?.address ?? "" })),
-    field("Google Maps Link", h("input", { type: "url", name: "googleMapsLink", value: destination?.googleMapsLink ?? "", placeholder: "https://…" })),
+    field(
+      "Link",
+      h("input", { type: "url", name: "googleMapsLink", value: destination?.googleMapsLink ?? "", placeholder: "https://…" }),
+      "Wo man mehr erfährt oder den Weg findet – z. B. Google Maps, OpenStreetMap, Komoot oder die Webseite des Ausflugsziels.",
+    ),
     field("Beschreibung", h("textarea", { name: "description", value: destination?.description ?? "" })),
     field("Bewertung (1-5)", h("input", { type: "number", name: "rating", min: "1", max: "5", value: destination?.rating ?? "" })),
     h(
@@ -366,7 +390,7 @@ async function detailPage(id) {
       "div",
       { class: "row" },
       isSafeUrl(destination.googleMapsLink)
-        ? h("a", { href: destination.googleMapsLink, target: "_blank", rel: "noreferrer", class: "btn" }, "In Google Maps öffnen")
+        ? h("a", { href: destination.googleMapsLink, target: "_blank", rel: "noreferrer", class: "btn", title: destination.googleMapsLink }, "Link öffnen", h("span", { class: "link-host" }, linkHost(destination.googleMapsLink)))
         : null,
       h("a", { href: `#/destinations/${encodeURIComponent(destination.id)}/edit`, class: "btn secondary" }, "Bearbeiten"),
       h("button", { type: "button", class: "btn danger", onclick: remove }, "Löschen"),
@@ -374,17 +398,23 @@ async function detailPage(id) {
   );
 }
 
-const searchState = { search: "", favorite: "", visited: "", tag: "" };
+const searchState = { search: "", favorite: "", visited: "", minRating: "", tags: new Set() };
 
 async function searchPage() {
   const tags = await api("tags");
+  // Inzwischen gelöschte oder umbenannte Tags aus der gemerkten Auswahl entfernen.
+  for (const name of searchState.tags) {
+    if (!tags.some((tag) => tag.name === name)) searchState.tags.delete(name);
+  }
   const results = h("div");
   let requestId = 0;
   let timer;
 
   async function update() {
     const current = ++requestId;
-    const query = Object.fromEntries(Object.entries(searchState).filter(([, value]) => value !== ""));
+    const { search, favorite, visited, minRating } = searchState;
+    const query = Object.fromEntries(Object.entries({ search, favorite, visited, minRating }).filter(([, value]) => value !== ""));
+    if (searchState.tags.size) query.tag = [...searchState.tags];
     try {
       const destinations = await api("destinations", { query });
       if (current === requestId) results.replaceChildren(destinationGrid(destinations, "Keine passenden Ziele gefunden."));
@@ -393,37 +423,51 @@ async function searchPage() {
     }
   }
 
-  function select(name, label) {
+  function select(name, label, options = [["", "Alle"], ["true", "Ja"], ["false", "Nein"]]) {
     return field(
       label,
       h(
         "select",
         { onchange: (event) => { searchState[name] = event.target.value; update(); } },
-        [["", "Alle"], ["true", "Ja"], ["false", "Nein"]].map(([value, text]) => h("option", { value, selected: searchState[name] === value }, text)),
+        options.map(([value, text]) => h("option", { value, selected: searchState[name] === value }, text)),
       ),
     );
   }
 
+  const ratingOptions = [["", "Alle"], ...[1, 2, 3, 4].map((stars) => [String(stars), `ab ${stars} ★`]), ["5", "5 ★"]];
+
   const tagButtons = h("div", { class: "tags" });
+  const clearTags = h("button", {
+    type: "button",
+    class: "btn secondary small",
+    onclick: () => {
+      searchState.tags.clear();
+      renderTagButtons();
+      update();
+    },
+  }, "Auswahl aufheben");
   function renderTagButtons() {
     tagButtons.replaceChildren(
-      ...tags.map((tag) =>
-        h(
+      ...tags.map((tag) => {
+        const active = searchState.tags.has(tag.name);
+        return h(
           "button",
           {
             type: "button",
-            class: `tag${searchState.tag === tag.name ? " active" : ""}`,
-            "aria-pressed": String(searchState.tag === tag.name),
+            class: `tag${active ? " active" : ""}`,
+            "aria-pressed": String(active),
             onclick: () => {
-              searchState.tag = searchState.tag === tag.name ? "" : tag.name;
+              if (active) searchState.tags.delete(tag.name);
+              else searchState.tags.add(tag.name);
               renderTagButtons();
               update();
             },
           },
           `#${tag.name}`,
-        ),
-      ),
+        );
+      }),
     );
+    clearTags.hidden = searchState.tags.size === 0;
   }
   renderTagButtons();
 
@@ -444,8 +488,15 @@ async function searchPage() {
           timer = setTimeout(update, 250);
         },
       }),
-      h("div", { class: "grid" }, select("favorite", "Favorit"), select("visited", "Besucht")),
-      tags.length ? tagButtons : null,
+      h("div", { class: "grid filters" }, select("favorite", "Favorit"), select("visited", "Besucht"), select("minRating", "Bewertung", ratingOptions)),
+      tags.length
+        ? h(
+            "div",
+            { class: "field" },
+            h("div", { class: "header" }, h("span", null, "Tags ", h("span", { class: "muted small" }, "(Ziel muss alle ausgewählten haben)")), clearTags),
+            tagButtons,
+          )
+        : null,
     ),
     results,
   ];

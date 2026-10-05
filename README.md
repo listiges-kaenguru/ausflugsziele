@@ -6,7 +6,7 @@ Progressive Web App zur Verwaltung persönlicher Ausflugsziele.
 > **Dieses Projekt befindet sich noch in der Entwicklung.**
 > Funktionen, Datenmodell und API können sich jederzeit ohne Vorankündigung ändern.
 
-Aktuelle Version: **0.0.1** – siehe [CHANGELOG](CHANGELOG.md).
+Aktuelle Version: **0.0.2** – siehe [CHANGELOG](CHANGELOG.md).
 
 Die App kommt ohne npm, Composer, Build-Schritt und externe Bibliotheken aus:
 das Frontend ist reines HTML/CSS/JavaScript, das Backend reines PHP mit SQLite.
@@ -18,7 +18,12 @@ das Frontend ist reines HTML/CSS/JavaScript, das Backend reines PHP mit SQLite.
 
 ## Installation
 1. Alle Dateien in ein Verzeichnis des Webservers kopieren (auch ein Unterordner funktioniert).
-2. Sicherstellen, dass PHP in `data/` schreiben darf.
+2. Sicherstellen, dass PHP in `data/` schreiben darf. Auf einem eigenen Linux-Server z. B.
+   (Webserver-Benutzer: `apache` unter Fedora/RHEL, `www-data` unter Debian/Ubuntu):
+   ```sh
+   sudo chgrp -R apache data && chmod -R g+rwX data
+   ```
+   Bei Webhostern genügt meist, `data/` per FTP die Rechte `775` zu geben.
 3. Die Seite im Browser öffnen. Beim ersten Aufruf wird die Datenbank angelegt und
    du richtest den ersten Zugang ein – er erhält Administratorrechte.
 4. Weitere Benutzer legt ein Admin unter **Profil → Benutzer** an.
@@ -31,6 +36,17 @@ Dafür muss `AllowOverride All` (mindestens `AuthConfig FileInfo Indexes Options
 
 PHP-Einstellungen (Fehlerausgabe aus, Uploads bis 10 MB) stehen in `.user.ini` (PHP-FPM/CGI)
 bzw. in `.htaccess` (mod_php). Lässt der Hoster das nicht zu, die Werte in dessen Verwaltungsoberfläche setzen.
+
+### Fehlersuche
+**„Die App konnte nicht geladen werden: Der Webserver darf nicht in den Ordner data/ schreiben“**
+– Schritt 2 der Installation fehlt. Bei aktivem SELinux (Fedora, RHEL) zusätzlich:
+```sh
+sudo semanage fcontext -a -t httpd_sys_rw_content_t "/pfad/zur/app/data(/.*)?"
+sudo restorecon -R /pfad/zur/app
+```
+
+**„Interner Fehler“** – die genaue Ursache steht im Fehlerprotokoll des Webservers
+(z. B. `/var/log/httpd/error_log` bzw. `/var/log/apache2/error.log`, Einträge beginnen mit `Ausflugsziele`).
 
 ### nginx
 nginx liest keine `.htaccess`-Dateien. Die internen Ordner müssen selbst gesperrt werden:
@@ -96,7 +112,7 @@ Schreibende Anfragen benötigen den Header `X-Requested-With: fetch`.
 | GET | `me` | Angemeldeter Benutzer und ob die Ersteinrichtung aussteht |
 | POST | `setup` | Ersten Admin anlegen (nur solange es keine Benutzer gibt) |
 | POST | `login`, `logout`, `change-password` | Anmeldung und Passwort |
-| GET/POST | `destinations` | Ziele auflisten (Filter: `search`, `favorite`, `visited`, `tag`) / anlegen |
+| GET/POST | `destinations` | Ziele auflisten (Filter: `search`, `favorite`, `visited`, `minRating` (1–5), `tag[]` – mehrfach angebbar, Treffer haben alle Tags) / anlegen |
 | GET/PUT/DELETE | `destinations/<id>` | Ziel lesen / ändern / löschen |
 | GET/POST | `tags` | Tags auflisten / anlegen |
 | PUT/DELETE | `tags/<id>` | Tag umbenennen / löschen (nur Admin) |
