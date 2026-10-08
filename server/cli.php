@@ -14,6 +14,12 @@ if (PHP_SAPI !== 'cli') {
 
 require __DIR__ . '/bootstrap.php';
 
+// Einrichtungsfehler (z. B. fehlendes pdo_sqlite) lesbar ausgeben statt als Stacktrace.
+set_exception_handler(function (Throwable $error): never {
+    fwrite(STDERR, ($error instanceof ApiException ? $error->getMessage() : (string) $error) . "\n");
+    exit(1);
+});
+
 $command = $argv[1] ?? '';
 
 switch ($command) {

@@ -9,6 +9,7 @@ ini_set('log_errors', '1');
 
 require __DIR__ . '/server/bootstrap.php';
 require __DIR__ . '/server/validation.php';
+require __DIR__ . '/server/webauthn.php';
 
 security_headers();
 
@@ -32,6 +33,14 @@ try {
         $resource === 'login' && $method === 'POST' => login(),
         $resource === 'logout' && $method === 'POST' => logout(),
         $resource === 'change-password' && $method === 'POST' => change_password(),
+
+        $resource === 'passkey-login' && $id === 'options' && $method === 'POST' => passkey_login_options(),
+        $resource === 'passkey-login' && $id === null && $method === 'POST' => passkey_login(),
+        $resource === 'passkeys' && $id === null && $method === 'GET' => list_passkeys(),
+        $resource === 'passkeys' && $id === 'options' && $method === 'POST' => passkey_register_options(),
+        $resource === 'passkeys' && $id === null && $method === 'POST' => create_passkey(),
+        $resource === 'passkeys' && $id !== null && $method === 'PUT' => rename_passkey($id),
+        $resource === 'passkeys' && $id !== null && $method === 'DELETE' => delete_passkey($id),
 
         $resource === 'destinations' && $id === null && $method === 'GET' => list_destinations(),
         $resource === 'destinations' && $id === null && $method === 'POST' => create_destination(),
@@ -100,7 +109,12 @@ function sign_in(array $user): void
 
 function me(): never
 {
-    respond(['user' => current_user(), 'needsSetup' => needs_setup(), 'version' => APP_VERSION]);
+    respond([
+        'user' => current_user(),
+        'needsSetup' => needs_setup(),
+        'passkeys' => passkeys_available(),
+        'version' => APP_VERSION,
+    ]);
 }
 
 // Legt beim ersten Aufruf den Admin-Zugang an (ersetzt die festen Seed-Zugangsdaten).
@@ -187,6 +201,152 @@ function change_password(): never
     db()->prepare('UPDATE "User" SET passwordHash = ?, updatedAt = ? WHERE id = ?')
         ->execute([hash_password($input['newPassword']), now(), $user['id']]);
     respond(['ok' => true]);
+}
+
+// ---------------------------------------------------------------- Passkeys
+
+function require_passkeys(): void
+{
+    if (!passkeys_available()) {
+        fail(501, 'NOT_AVAILABLE', 'Passkeys sind auf diesem Server nicht verfügbar (PHP-Erweiterung openssl fehlt)');
+    }
+}
+
+function passkey_json(array $row): array
+{
+    return [
+        'id' => $row['id'],
+        'name' => $row['name'],
+        'createdAt' => $row['createdAt'],
+        'lastUsedAt' => $row['lastUsedAt'],
+    ];
+}
+
+function list_passkeys(): never
+{
+    $user = require_user();
+    $stmt = db()->prepare('SELECT * FROM "Passkey" WHERE userId = ? ORDER BY createdAt');
+    $stmt->execute([$user['id']]);
+    respond(array_map('passkey_json', $stmt->fetchAll()));
+}
+
+/** Optionen für navigator.credentials.create(), Binärwerte als Base64URL. */
+function passkey_register_options(): never
+{
+    require_passkeys();
+    $user = require_user();
+    $stmt = db()->prepare('SELECT credentialId, transports FROM "Passkey" WHERE userId = ?');
+    $stmt->execute([$user['id']]);
+    $exclude = array_map(fn (array $row) => [
+        'type' => 'public-key',
+        'id' => $row['credentialId'],
+        'transports' => json_decode((string) $row['transports'], true) ?: [],
+    ], $stmt->fetchAll());
+
+    respond([
+        'challenge' => webauthn_challenge('register'),
+        'rp' => ['id' => webauthn_rp_id(), 'name' => 'Ausflugsziele'],
+        'user' => ['id' => base64url_encode($user['id']), 'name' => $user['username'], 'displayName' => $user['username']],
+        'pubKeyCredParams' => [
+            ['type' => 'public-key', 'alg' => COSE_ALG_ES256],
+            ['type' => 'public-key', 'alg' => COSE_ALG_RS256],
+        ],
+        'authenticatorSelection' => ['residentKey' => 'required', 'requireResidentKey' => true, 'userVerification' => 'required'],
+        'excludeCredentials' => $exclude,
+        'attestation' => 'none',
+        'timeout' => WEBAUTHN_TIMEOUT_MS,
+    ]);
+}
+
+function create_passkey(): never
+{
+    require_passkeys();
+    $user = require_user();
+    $body = json_body();
+    $credential = webauthn_verify_registration($body);
+    // Erkannter Passwortmanager vor dem Gerätenamen, den der Browser vorschlägt.
+    $fallback = trim(string_field($body, 'fallbackName') ?? '');
+    $name = $credential['provider'] ?? ($fallback !== '' && text_length($fallback) <= 60 ? $fallback : 'Passkey');
+    $transports = array_values(array_filter((array) ($body['transports'] ?? []), fn ($t) => is_string($t) && strlen($t) <= 32));
+
+    $exists = db()->prepare('SELECT 1 FROM "Passkey" WHERE credentialId = ?');
+    $exists->execute([$credential['credentialId']]);
+    if ($exists->fetchColumn()) {
+        fail(409, 'CONFLICT', 'Dieser Passkey ist bereits gespeichert');
+    }
+
+    $row = [
+        'id' => uuid(),
+        'name' => $name,
+        'createdAt' => now(),
+        'lastUsedAt' => null,
+    ];
+    db()->prepare('INSERT INTO "Passkey" (id, userId, credentialId, publicKey, algorithm, signCount, name, transports, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        ->execute([$row['id'], $user['id'], $credential['credentialId'], $credential['publicKey'], $credential['algorithm'], $credential['signCount'], $name, json_encode($transports), $row['createdAt']]);
+    respond(passkey_json($row), 201);
+}
+
+function own_passkey(string $id): array
+{
+    $user = require_user();
+    $stmt = db()->prepare('SELECT * FROM "Passkey" WHERE id = ? AND userId = ?');
+    $stmt->execute([$id, $user['id']]);
+    return $stmt->fetch() ?: fail(404, 'NOT_FOUND', 'Passkey nicht gefunden');
+}
+
+function rename_passkey(string $id): never
+{
+    $passkey = own_passkey($id);
+    $passkey['name'] = validate_passkey_name(json_body());
+    db()->prepare('UPDATE "Passkey" SET name = ? WHERE id = ?')->execute([$passkey['name'], $id]);
+    respond(passkey_json($passkey));
+}
+
+function delete_passkey(string $id): never
+{
+    $passkey = own_passkey($id);
+    db()->prepare('DELETE FROM "Passkey" WHERE id = ?')->execute([$id]);
+    respond(['ok' => true, 'credentialId' => $passkey['credentialId']]);
+}
+
+/** Optionen für navigator.credentials.get(): ohne allowCredentials wählt der Browser den Passkey. */
+function passkey_login_options(): never
+{
+    require_passkeys();
+    respond([
+        'challenge' => webauthn_challenge('login'),
+        'rpId' => webauthn_rp_id(),
+        'userVerification' => 'required',
+        'timeout' => WEBAUTHN_TIMEOUT_MS,
+    ]);
+}
+
+function passkey_login(): never
+{
+    require_passkeys();
+    if (is_rate_limited('passkey:' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 10)) {
+        fail(429, 'RATE_LIMITED', 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.');
+    }
+    $body = json_body();
+    $stmt = db()->prepare('SELECT p.*, u.username, u.role FROM "Passkey" p JOIN "User" u ON u.id = p.userId WHERE p.credentialId = ?');
+    $stmt->execute([(string) ($body['id'] ?? '')]);
+    $passkey = $stmt->fetch();
+    if (!$passkey) {
+        unset($_SESSION['webauthn']);
+        fail(401, 'UNKNOWN_PASSKEY', 'Dieser Passkey ist hier nicht (mehr) registriert. Bitte mit Passwort anmelden.');
+    }
+    $userHandle = $body['userHandle'] ?? null;
+    if ($userHandle !== null && $userHandle !== '' && base64url_decode($userHandle) !== $passkey['userId']) {
+        fail(401, 'INVALID_CREDENTIALS', 'Passkey konnte nicht bestätigt werden');
+    }
+
+    $signCount = webauthn_verify_assertion($body, $passkey);
+    db()->prepare('UPDATE "Passkey" SET signCount = ?, lastUsedAt = ? WHERE id = ?')
+        ->execute([$signCount, now(), $passkey['id']]);
+
+    $user = ['id' => $passkey['userId'], 'username' => $passkey['username'], 'role' => $passkey['role']];
+    sign_in($user);
+    respond(['user' => $user]);
 }
 
 // ---------------------------------------------------------------- Benutzer

@@ -6,6 +6,38 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Version unter 1.0.0 liegt, können sich Datenmodell und API jederzeit ändern.
 
+## [Unveröffentlicht]
+
+### Hinzugefügt
+- **Passkeys:** Unter Profil → Anmeldung & Sicherheit Passkeys anlegen, umbenennen und entfernen;
+  Anmeldung per Passkey-Button oder direkt über das Autofill des Benutzernamens. Nach einer Anmeldung
+  mit Passwort schlägt die Übersicht einmalig vor, einen Passkey einzurichten. Bekannte Passwortmanager
+  (Google, iCloud, Windows Hello, 1Password, Bitwarden, …) werden am Namen des Passkeys erkannt.
+  Umsetzung ohne Bibliothek in `server/webauthn.php` (ES256 und RS256, benötigt die PHP-Erweiterung `openssl`).
+- Neue API-Endpunkte `passkeys`, `passkeys/options`, `passkeys/<id>`, `passkey-login/options`, `passkey-login`;
+  `me` liefert zusätzlich `passkeys` (ob der Server Passkeys unterstützt).
+- Neue Tabelle `Passkey` (wird bei bestehenden Datenbanken automatisch ergänzt).
+- Übersicht: Favorit und Besucht direkt auf der Karte umschalten, Titelbild (erstes Foto) und Anzahl der Fotos,
+  Sortierung (neueste, zuletzt geändert, Name, Bewertung).
+- Detailseite: Fotogalerie mit Vollbildansicht (Blättern per Pfeiltasten oder Wischen), Fotos per Drag & Drop
+  hinzufügen, Link „Auf Karte zeigen“ zur Adresse (OpenStreetMap).
+- Hell- und Dunkelmodus nach Systemeinstellung.
+
+### Geändert
+- Oberfläche überarbeitet: Navigation oben (Desktop) bzw. unten mit hervorgehobenem „Neu“-Button (Mobil),
+  Karten mit Titelbild, gegliederte Formulare mit Sterne-Auswahl und Schaltern, festgehaltene Speichern-Leiste.
+- Suche und Übersicht zusammengelegt: Suchfeld, Schnellfilter (Alle, Favoriten, Noch offen, Besucht) mit
+  Anzahl sowie ausklappbare Filter für Bewertung und Tags; `#/search` führt zur Übersicht.
+- Bestätigungen, Eingaben und Meldungen erscheinen als Dialoge und Hinweise in der App statt als
+  Browser-Fenster (`confirm`, `prompt`, `alert`).
+- Einrichtung und Passwortänderung fragen das neue Passwort zur Sicherheit doppelt ab.
+- Nach dem Anlegen eines Ziels geht es direkt zur Detailseite, um Fotos hinzuzufügen; die Übersicht merkt sich
+  beim Zurückkehren Filter und Scrollposition.
+
+### Behoben
+- Fehlt PHP die Erweiterung `pdo_sqlite`, zeigt die App (und `server/cli.php`) eine verständliche Meldung
+  statt „Interner Fehler“. README um einen Abschnitt zur Fehlersuche ergänzt.
+
 ## [0.0.3] – 2026-10-05
 
 ### Hinzugefügt
