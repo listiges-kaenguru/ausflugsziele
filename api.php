@@ -59,6 +59,9 @@ try {
 
         $resource === 'users' && $id === null && $method === 'GET' => list_users(),
         $resource === 'users' && $id === null && $method === 'POST' => create_user(),
+        $resource === 'users' && $id !== null && $action === null && $method === 'PUT' => update_user($id),
+        $resource === 'users' && $id !== null && $action === null && $method === 'DELETE' => delete_user($id),
+        $resource === 'users' && $id !== null && $action === 'password' && $method === 'POST' => reset_user_password($id),
 
         default => fail(404, 'NOT_FOUND', 'Unbekannter Endpunkt'),
     };
@@ -77,7 +80,8 @@ function current_user(): ?array
     if (!is_string($userId)) {
         return null;
     }
-    $stmt = db()->prepare('SELECT id, username, role, createdAt FROM "User" WHERE id = ?');
+    // Gesperrte Benutzer gelten als abgemeldet – bestehende Sessions enden damit sofort.
+    $stmt = db()->prepare('SELECT id, username, role, createdAt FROM "User" WHERE id = ? AND disabledAt IS NULL');
     $stmt->execute([$userId]);
     return $stmt->fetch() ?: null;
 }
@@ -147,9 +151,17 @@ function login(): never
     if (!$user || !verify_password($input['password'], $user['passwordHash'])) {
         fail(401, 'INVALID_CREDENTIALS', 'Benutzername oder Passwort ist falsch');
     }
+    assert_not_disabled($user);
 
     sign_in($user);
     respond(['user' => ['id' => $user['id'], 'username' => $user['username'], 'role' => $user['role']]]);
+}
+
+function assert_not_disabled(array $user): void
+{
+    if ($user['disabledAt'] !== null) {
+        fail(403, 'ACCOUNT_DISABLED', 'Dieser Zugang ist gesperrt. Bitte wende dich an einen Administrator.');
+    }
 }
 
 function is_rate_limited(string $key, int $limit = 5, int $windowSeconds = 60): bool
@@ -328,7 +340,7 @@ function passkey_login(): never
         fail(429, 'RATE_LIMITED', 'Zu viele Anmeldeversuche. Bitte später erneut versuchen.');
     }
     $body = json_body();
-    $stmt = db()->prepare('SELECT p.*, u.username, u.role FROM "Passkey" p JOIN "User" u ON u.id = p.userId WHERE p.credentialId = ?');
+    $stmt = db()->prepare('SELECT p.*, u.username, u.role, u.disabledAt FROM "Passkey" p JOIN "User" u ON u.id = p.userId WHERE p.credentialId = ?');
     $stmt->execute([(string) ($body['id'] ?? '')]);
     $passkey = $stmt->fetch();
     if (!$passkey) {
@@ -341,6 +353,7 @@ function passkey_login(): never
     }
 
     $signCount = webauthn_verify_assertion($body, $passkey);
+    assert_not_disabled($passkey);
     db()->prepare('UPDATE "Passkey" SET signCount = ?, lastUsedAt = ? WHERE id = ?')
         ->execute([$signCount, now(), $passkey['id']]);
 
@@ -364,19 +377,96 @@ function insert_user(string $username, string $password, string $role): array
     return $user;
 }
 
+function user_json(array $row): array
+{
+    return [
+        'id' => $row['id'],
+        'username' => $row['username'],
+        'role' => $row['role'],
+        'createdAt' => $row['createdAt'],
+        'disabled' => $row['disabledAt'] !== null,
+        'disabledAt' => $row['disabledAt'],
+        'destinationCount' => (int) ($row['destinationCount'] ?? 0),
+        'passkeyCount' => (int) ($row['passkeyCount'] ?? 0),
+    ];
+}
+
+function user_query(string $where = ''): string
+{
+    return <<<SQL
+        SELECT u.id, u.username, u.role, u.createdAt, u.disabledAt,
+            (SELECT COUNT(*) FROM "Destination" d WHERE d.createdBy = u.id AND d.deletedAt IS NULL) AS destinationCount,
+            (SELECT COUNT(*) FROM "Passkey" p WHERE p.userId = u.id) AS passkeyCount
+        FROM "User" u $where
+        SQL;
+}
+
 function list_users(): never
 {
     require_admin();
-    respond(db()->query('SELECT id, username, role, createdAt FROM "User" ORDER BY username')->fetchAll());
+    respond(array_map('user_json', db()->query(user_query('ORDER BY u.username'))->fetchAll()));
 }
 
+/** Ohne Passwort im Body erzeugt der Server eines und gibt es einmalig zurück. */
 function create_user(): never
 {
     require_admin();
     $body = json_body();
-    $input = validate_credentials($body);
     $role = ($body['role'] ?? 'USER') === 'ADMIN' ? 'ADMIN' : 'USER';
-    respond(insert_user($input['username'], $input['password'], $role), 201);
+    if (($body['password'] ?? '') === '') {
+        $password = generate_password();
+        $user = insert_user(validate_username($body), $password, $role);
+        respond(['password' => $password] + user_json($user + ['disabledAt' => null]), 201);
+    }
+    $input = validate_credentials($body);
+    respond(user_json(insert_user($input['username'], $input['password'], $role) + ['disabledAt' => null]), 201);
+}
+
+/** Lädt einen anderen Benutzer – Admins können sich nicht selbst sperren, löschen oder zurücksetzen. */
+function other_user(string $id): array
+{
+    $admin = require_admin();
+    if ($id === $admin['id']) {
+        fail(400, 'VALIDATION_ERROR', 'Das eigene Konto kann hier nicht geändert werden');
+    }
+    $stmt = db()->prepare(user_query('WHERE u.id = ?'));
+    $stmt->execute([$id]);
+    return $stmt->fetch() ?: fail(404, 'NOT_FOUND', 'Benutzer nicht gefunden');
+}
+
+function update_user(string $id): never
+{
+    $user = other_user($id);
+    $disabled = json_body()['disabled'] ?? null;
+    if (!is_bool($disabled)) {
+        validation_failed(['disabled' => 'Ungültiger Wert']);
+    }
+    $user['disabledAt'] = $disabled ? ($user['disabledAt'] ?? now()) : null;
+    db()->prepare('UPDATE "User" SET disabledAt = ?, updatedAt = ? WHERE id = ?')->execute([$user['disabledAt'], now(), $id]);
+    respond(user_json($user));
+}
+
+function reset_user_password(string $id): never
+{
+    other_user($id);
+    $password = generate_password();
+    db()->prepare('UPDATE "User" SET passwordHash = ?, updatedAt = ? WHERE id = ?')->execute([hash_password($password), now(), $id]);
+    respond(['password' => $password]);
+}
+
+/** Löscht den Benutzer samt Zielen, Fotos und Passkeys (Fremdschlüssel mit ON DELETE CASCADE). */
+function delete_user(string $id): never
+{
+    other_user($id);
+    $stmt = db()->prepare('SELECT i.filename FROM "DestinationImage" i JOIN "Destination" d ON d.id = i.destinationId WHERE d.createdBy = ?');
+    $stmt->execute([$id]);
+    $files = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    db()->prepare('DELETE FROM "User" WHERE id = ?')->execute([$id]);
+    foreach ($files as $filename) {
+        @unlink(image_path(['filename' => $filename]));
+    }
+    respond(['ok' => true]);
 }
 
 // ---------------------------------------------------------------- Ziele

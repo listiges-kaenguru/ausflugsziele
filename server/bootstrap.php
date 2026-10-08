@@ -145,6 +145,12 @@ function migrate(PDO $pdo): void
         CREATE UNIQUE INDEX IF NOT EXISTS "Passkey_credentialId_key" ON "Passkey"("credentialId");
         CREATE INDEX IF NOT EXISTS "Passkey_userId_idx" ON "Passkey"("userId");
         SQL);
+
+    // Neue Spalten nur ergänzen, wenn sie in einer bestehenden Datenbank noch fehlen.
+    $userColumns = array_column($pdo->query('PRAGMA table_info("User")')->fetchAll(), 'name');
+    if (!in_array('disabledAt', $userColumns, true)) {
+        $pdo->exec('ALTER TABLE "User" ADD COLUMN "disabledAt" DATETIME');
+    }
 }
 
 function uuid(): string
@@ -163,6 +169,21 @@ function now(): string
 function hash_password(string $password): string
 {
     return password_hash($password, PASSWORD_BCRYPT, ['cost' => 10]);
+}
+
+/** Zufälliges, gut ablesbares Passwort wie „k7mp-x9qr-2bth-wn4e“ (ohne verwechselbare Zeichen wie l/1, o/0). */
+function generate_password(): string
+{
+    $alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
+    $groups = [];
+    for ($group = 0; $group < 4; $group++) {
+        $chunk = '';
+        for ($i = 0; $i < 4; $i++) {
+            $chunk .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+        $groups[] = $chunk;
+    }
+    return implode('-', $groups);
 }
 
 function verify_password(string $password, string $hash): bool

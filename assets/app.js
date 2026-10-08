@@ -46,6 +46,9 @@ const ICONS = {
   key: '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>',
   shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
   lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  unlock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
+  copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+  dice: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M16 8h.01"/><path d="M8 8h.01"/><path d="M8 16h.01"/><path d="M16 16h.01"/><path d="M12 12h.01"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>',
   close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   sliders: '<line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/>',
@@ -250,7 +253,12 @@ function dialog({ title, text, content, confirmLabel = "OK", cancelLabel = "Abbr
       text ? h("p", { class: "muted" }, text) : null,
       content,
       error,
-      h("div", { class: "dialog-actions" }, h("button", { type: "button", class: "btn secondary", onclick: () => el.close() }, cancelLabel), confirmButton),
+      h(
+        "div",
+        { class: "dialog-actions" },
+        cancelLabel === null ? null : h("button", { type: "button", class: "btn secondary", onclick: () => el.close() }, cancelLabel),
+        confirmButton,
+      ),
     );
     el.append(form);
     let result = null;
@@ -277,6 +285,35 @@ function dialog({ title, text, content, confirmLabel = "OK", cancelLabel = "Abbr
 
 function confirmDialog(title, text, confirmLabel) {
   return dialog({ title, text, confirmLabel, danger: true }).then(Boolean);
+}
+
+function iconButton(iconName, label, onclick, variant = "ghost") {
+  return h("button", { type: "button", class: `btn ${variant} small icon-only`, "aria-label": label, title: label, onclick }, icon(iconName, "sm"));
+}
+
+/** Zeigt ein vom Server erzeugtes Passwort einmalig an, mit Kopier-Button. */
+function passwordDialog({ title, username, password }) {
+  const input = h("input", { type: "text", class: "password-box", value: password, readonly: true, "aria-label": "Passwort", onfocus: (event) => event.target.select() });
+  const copyButton = h("button", {
+    type: "button",
+    class: "btn secondary",
+    onclick: async () => {
+      try {
+        await navigator.clipboard.writeText(password);
+        copyButton.replaceChildren(icon("tick", "sm"), "Kopiert");
+      } catch {
+        input.focus();
+        toast("Kopieren nicht möglich – bitte markieren und manuell kopieren", "error");
+      }
+    },
+  }, icon("copy", "sm"), "Kopieren");
+  return dialog({
+    title,
+    text: `Gib ${username} dieses Passwort weiter. Es wird nur jetzt angezeigt; ändern lässt es sich nach der Anmeldung unter Profil.`,
+    content: h("div", { class: "password-row" }, input, copyButton),
+    confirmLabel: "Fertig",
+    cancelLabel: null,
+  });
 }
 
 /** Fragt einen Text ab, z. B. einen neuen Namen. `save` speichert ihn und darf scheitern. */
@@ -540,6 +577,36 @@ function destinationCard(destination, onChange) {
 
 // ---------------------------------------------------------------- Seiten: Übersicht
 
+/** „Wohin heute?“: schlägt ein zufälliges, bevorzugt noch nicht besuchtes Ziel aus der aktuellen Auswahl vor. */
+function randomDestinationDialog(destinations) {
+  const open = destinations.filter((d) => !d.visited);
+  const pool = open.length ? open : destinations;
+  const preview = h("div", { class: "pick" });
+  let current = null;
+  function roll() {
+    const candidates = pool.length > 1 ? pool.filter((d) => d !== current) : pool;
+    current = candidates[Math.floor(Math.random() * candidates.length)];
+    preview.replaceChildren(
+      cover(current),
+      h(
+        "div",
+        { class: "pick-body" },
+        h("h3", null, current.name),
+        current.address ? h("p", { class: "meta" }, icon("pin", "sm"), h("span", null, current.address)) : null,
+        stars(current.rating),
+      ),
+    );
+  }
+  roll();
+  dialog({
+    title: "Wohin heute?",
+    text: open.length ? "Ein noch nicht besuchtes Ziel aus deiner aktuellen Auswahl:" : "Hier warst du schon überall – wie wäre es mit einem Wiedersehen?",
+    content: [preview, pool.length > 1 ? h("button", { type: "button", class: "btn ghost small reroll", onclick: roll }, icon("dice", "sm"), "Nochmal würfeln") : null],
+    confirmLabel: "Ansehen",
+    cancelLabel: "Schließen",
+  }).then((confirmed) => confirmed && go(`/destinations/${encodeURIComponent(current.id)}`));
+}
+
 const listState = { search: "", segment: "all", minRating: 0, tags: new Set(), sort: "new", showFilters: false, scrollY: 0 };
 
 const SEGMENTS = [
@@ -589,6 +656,8 @@ async function dashboardPage({ focusSearch = false } = {}) {
   }
 
   const results = h("div", { class: "grid" });
+  let visible = destinations;
+  const pickButton = h("button", { type: "button", class: "btn secondary small", onclick: () => randomDestinationDialog(visible) }, icon("dice", "sm"), "Wohin heute?");
   const resultCount = h("span", { "aria-live": "polite" });
   const segmentBar = h("div", { class: "segments", role: "group", "aria-label": "Ziele filtern" });
   const filterBadge = h("span", { class: "badge" });
@@ -708,7 +777,8 @@ async function dashboardPage({ focusSearch = false } = {}) {
 
   function update() {
     const query = listState.search.trim().toLocaleLowerCase("de");
-    const visible = destinations.filter((d) => matches(d, query)).sort(SORTS[listState.sort][1]);
+    visible = destinations.filter((d) => matches(d, query)).sort(SORTS[listState.sort][1]);
+    pickButton.hidden = visible.length === 0;
     const extraFilters = (listState.minRating > 0 ? 1 : 0) + listState.tags.size;
 
     renderSegments();
@@ -746,7 +816,7 @@ async function dashboardPage({ focusSearch = false } = {}) {
       segmentBar,
       filterPanel,
     ),
-    h("div", { class: "result-bar" }, resultCount, sortSelect),
+    h("div", { class: "result-bar" }, resultCount, h("div", { class: "row" }, pickButton, sortSelect)),
     results,
   ];
 }
@@ -1240,6 +1310,131 @@ function passkeySection(passkeys) {
   );
 }
 
+/** Benutzerverwaltung für Admins: anlegen (mit erzeugtem Passwort), Passwort zurücksetzen, sperren, löschen. */
+function usersCard(users) {
+  const list = h("ul", { class: "list" });
+  const count = h("p", { class: "muted small" });
+
+  function details(entry) {
+    return [
+      `Seit ${formatDate(entry.createdAt)}`,
+      plural(entry.destinationCount, "Ziel", "Ziele"),
+      entry.passkeyCount ? plural(entry.passkeyCount, "Passkey", "Passkeys") : null,
+      entry.disabled ? `gesperrt seit ${formatDate(entry.disabledAt)}` : null,
+    ].filter(Boolean).join(" · ");
+  }
+
+  function renderList() {
+    users.sort((a, b) => a.username.localeCompare(b.username, "de"));
+    const disabled = users.filter((entry) => entry.disabled).length;
+    count.textContent = plural(users.length, "Zugang", "Zugänge") + (disabled ? `, davon ${disabled} gesperrt` : "");
+    list.replaceChildren(
+      ...users.map((entry) =>
+        h(
+          "li",
+          { class: entry.disabled ? "is-disabled" : null },
+          h("span", { class: "list-icon" }, entry.disabled ? icon("lock", "sm") : entry.username[0]?.toUpperCase()),
+          h(
+            "div",
+            { class: "grow" },
+            h(
+              "span",
+              { class: "user-name" },
+              entry.username,
+              h("span", { class: `badge-role${entry.role === "ADMIN" ? " admin" : ""}` }, entry.role === "ADMIN" ? "Admin" : "Benutzer"),
+              entry.disabled ? h("span", { class: "badge-role locked" }, "Gesperrt") : null,
+            ),
+            h("span", { class: "muted small" }, details(entry)),
+          ),
+          entry.id === session.user.id
+            ? h("span", { class: "muted small" }, "Du")
+            : h(
+                "span",
+                { class: "row user-actions" },
+                iconButton("key", `Neues Passwort für ${entry.username}`, () => resetPassword(entry)),
+                iconButton(entry.disabled ? "unlock" : "lock", `${entry.username} ${entry.disabled ? "entsperren" : "sperren"}`, () => toggleLock(entry)),
+                iconButton("trash", `${entry.username} löschen`, () => remove(entry), "danger"),
+              ),
+        ),
+      ),
+    );
+  }
+
+  async function resetPassword(entry) {
+    const result = await dialog({
+      title: `Neues Passwort für ${entry.username}?`,
+      text: "Das bisherige Passwort funktioniert danach nicht mehr. Passkeys bleiben gültig.",
+      confirmLabel: "Passwort erzeugen",
+      onConfirm: () => api(`users/${entry.id}/password`, { method: "POST" }),
+    });
+    if (result) await passwordDialog({ title: `Neues Passwort für ${entry.username}`, username: entry.username, password: result.password });
+  }
+
+  async function toggleLock(entry) {
+    const disabled = !entry.disabled;
+    if (disabled && !(await confirmDialog(
+      `${entry.username} sperren?`,
+      `${entry.username} kann sich nicht mehr anmelden und wird sofort abgemeldet. Ziele und Fotos bleiben erhalten; entsperren ist jederzeit möglich.`,
+      "Sperren",
+    ))) return;
+    try {
+      Object.assign(entry, await api(`users/${entry.id}`, { method: "PUT", body: { disabled } }));
+      renderList();
+      toast(disabled ? `${entry.username} gesperrt` : `${entry.username} entsperrt`);
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  }
+
+  async function remove(entry) {
+    const input = h("input", { type: "text", name: "confirm", autocomplete: "off", autocapitalize: "none", spellcheck: "false", required: true });
+    const deleted = await dialog({
+      title: `${entry.username} löschen?`,
+      text: entry.destinationCount
+        ? `Der Zugang wird mit ${plural(entry.destinationCount, "Ziel", "Zielen")}, allen Fotos und Passkeys endgültig gelöscht. Wenn die Daten erhalten bleiben sollen, sperre den Zugang stattdessen.`
+        : "Der Zugang wird samt Passkeys endgültig gelöscht.",
+      content: field(`Zur Bestätigung „${entry.username}“ eingeben`, input),
+      confirmLabel: "Endgültig löschen",
+      danger: true,
+      onConfirm: async (data) => {
+        if (String(data.get("confirm")).trim() !== entry.username) throw new Error("Der Benutzername stimmt nicht überein");
+        await api(`users/${entry.id}`, { method: "DELETE" });
+      },
+    });
+    if (!deleted) return;
+    users.splice(users.indexOf(entry), 1);
+    renderList();
+    toast(`${entry.username} gelöscht`);
+  }
+
+  const userForm = h(
+    "form",
+    null,
+    field("Benutzername", h("input", { type: "text", name: "username", autocomplete: "off", autocapitalize: "none", spellcheck: "false", minlength: "3", maxlength: "64", required: true }), {
+      hint: "Ein sicheres Passwort wird automatisch erzeugt und einmalig angezeigt.",
+    }),
+    switchRow("admin", "Administratorrechte", "shield", false),
+    h("div", null, h("button", { type: "submit", class: "btn" }, icon("add", "sm"), "Benutzer anlegen")),
+  );
+  bindForm(userForm, async (data) => {
+    const created = await api("users", { method: "POST", body: { username: data.get("username"), role: data.has("admin") ? "ADMIN" : "USER" } });
+    const { password, ...entry } = created;
+    users.push(entry);
+    renderList();
+    userForm.reset();
+    await passwordDialog({ title: `Zugang für ${entry.username} angelegt`, username: entry.username, password });
+  });
+
+  renderList();
+  return h(
+    "section",
+    { class: "card" },
+    h("div", { class: "section-title" }, h("span", { class: "section-icon" }, icon("users")), h("div", null, h("h2", null, "Benutzer"), count)),
+    list,
+    h("details", { class: "disclosure" }, h("summary", null, "Neuen Benutzer anlegen", icon("down", "sm")), userForm),
+  );
+}
+
 async function profilePage() {
   setTitle("Profil");
   const user = session.user;
@@ -1325,48 +1520,7 @@ async function profilePage() {
       : h("div", { class: "tags" }, tags.map((tag) => h("span", { class: "tag" }, tag.name))),
   );
 
-  let userSection = null;
-  if (isAdmin) {
-    const userForm = h(
-      "form",
-      null,
-      h(
-        "div",
-        { class: "form-grid two" },
-        field("Benutzername", h("input", { type: "text", name: "username", autocomplete: "off", minlength: "3", maxlength: "64", required: true })),
-        field("Passwort", h("input", { type: "password", name: "password", autocomplete: "new-password", minlength: "6", required: true })),
-      ),
-      switchRow("admin", "Administratorrechte", "shield", false),
-      h("div", null, h("button", { type: "submit", class: "btn" }, icon("add", "sm"), "Benutzer anlegen")),
-    );
-    bindForm(userForm, async (data) => {
-      await api("users", {
-        method: "POST",
-        body: { username: data.get("username"), password: data.get("password"), role: data.has("admin") ? "ADMIN" : "USER" },
-      });
-      toast(`Benutzer ${data.get("username")} angelegt`);
-      render();
-    });
-    userSection = h(
-      "section",
-      { class: "card" },
-      sectionTitle("users", "Benutzer", plural(users.length, "Zugang", "Zugänge")),
-      h(
-        "ul",
-        { class: "list" },
-        users.map((entry) =>
-          h(
-            "li",
-            null,
-            h("span", { class: "list-icon" }, entry.username[0]?.toUpperCase()),
-            h("div", { class: "grow" }, h("span", null, entry.username), h("span", { class: "muted small" }, `Seit ${formatDate(entry.createdAt)}`)),
-            h("span", { class: `badge-role${entry.role === "ADMIN" ? " admin" : ""}` }, entry.role === "ADMIN" ? "Admin" : "Benutzer"),
-          ),
-        ),
-      ),
-      h("details", { class: "disclosure" }, h("summary", null, "Neuen Benutzer anlegen", icon("down", "sm")), userForm),
-    );
-  }
+  const userSection = isAdmin ? usersCard(users) : null;
 
   return [
     h(
@@ -1401,6 +1555,7 @@ async function logout() {
 function signedIn(user) {
   session.user = user;
   session.needsSetup = false;
+  document.getElementById("toasts").replaceChildren();
   toast(`Hallo, ${user.username}!`);
   go("/");
 }
