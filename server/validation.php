@@ -42,15 +42,31 @@ function optional_text(array $body, string $field, int $maxLength, array &$error
     return $value === '' ? null : $value;
 }
 
+function username_error(string $username): ?string
+{
+    if (text_length($username) < 3) {
+        return 'Benutzername ist zu kurz';
+    }
+    return text_length($username) > 64 ? 'Benutzername ist zu lang' : null;
+}
+
+function validate_username(array $body): string
+{
+    $username = trim(string_field($body, 'username') ?? '');
+    $error = username_error($username);
+    if ($error !== null) {
+        validation_failed(['username' => $error]);
+    }
+    return $username;
+}
+
 function validate_credentials(array $body): array
 {
     $errors = [];
     $username = trim(string_field($body, 'username') ?? '');
     $password = string_field($body, 'password') ?? '';
-    if (text_length($username) < 3) {
-        $errors['username'] = 'Benutzername ist zu kurz';
-    } elseif (text_length($username) > 64) {
-        $errors['username'] = 'Benutzername ist zu lang';
+    if (($error = username_error($username)) !== null) {
+        $errors['username'] = $error;
     }
     if (strlen($password) < 6) {
         $errors['password'] = 'Passwort ist zu kurz';

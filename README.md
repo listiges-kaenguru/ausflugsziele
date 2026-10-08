@@ -6,7 +6,7 @@ Progressive Web App zur Verwaltung persönlicher Ausflugsziele.
 > **Dieses Projekt befindet sich noch in der Entwicklung.**
 > Funktionen, Datenmodell und API können sich jederzeit ohne Vorankündigung ändern.
 
-Aktuelle Version: **0.0.3** – siehe [CHANGELOG](CHANGELOG.md).
+Aktuelle Version: **0.1.0** – siehe [CHANGELOG](CHANGELOG.md).
 
 Die App kommt ohne npm, Composer, Build-Schritt und externe Bibliotheken aus:
 das Frontend ist reines HTML/CSS/JavaScript, das Backend reines PHP mit SQLite.
@@ -27,7 +27,9 @@ das Frontend ist reines HTML/CSS/JavaScript, das Backend reines PHP mit SQLite.
    Bei Webhostern genügt meist, `data/` per FTP die Rechte `775` zu geben.
 3. Die Seite im Browser öffnen. Beim ersten Aufruf wird die Datenbank angelegt und
    du richtest den ersten Zugang ein – er erhält Administratorrechte.
-4. Weitere Benutzer legt ein Admin unter **Profil → Benutzer** an.
+4. Weitere Benutzer legt ein Admin unter **Profil → Benutzer** an. Das Passwort erzeugt die App und zeigt es
+   einmalig zum Weitergeben an. Dort lassen sich Benutzer auch sperren, entsperren, löschen und ihr Passwort
+   neu erzeugen.
 
 Für den Betrieb im Internet unbedingt HTTPS verwenden.
 
@@ -140,7 +142,9 @@ Binärdaten der Passkey-Endpunkte (Challenge, Schlüssel-IDs, Antworten des Brow
 | POST | `images` | Bild hochladen (`multipart/form-data`: `destinationId`, `file`) |
 | GET | `images/<id>/file` | Bild abrufen |
 | DELETE | `images/<id>` | Bild löschen |
-| GET/POST | `users` | Benutzer auflisten / anlegen (nur Admin) |
+| GET/POST | `users` | Benutzer auflisten (mit `disabled`, `destinationCount`, `passkeyCount`) / anlegen – ohne `password` erzeugt der Server eines und liefert es einmalig zurück (nur Admin) |
+| PUT/DELETE | `users/<id>` | Benutzer sperren bzw. entsperren (`{ "disabled": true }`) / samt Zielen, Fotos und Passkeys löschen (nur Admin, nicht das eigene Konto) |
+| POST | `users/<id>/password` | Neues Passwort erzeugen und einmalig zurückgeben (nur Admin, nicht das eigene Konto) |
 
 ## Projektstruktur
 - `index.html`, `assets/` – Frontend (Single-Page-App mit Hash-Routing)

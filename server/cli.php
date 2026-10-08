@@ -46,8 +46,9 @@ switch ($command) {
         break;
 
     case 'list-users':
-        foreach (db()->query('SELECT username, role, createdAt FROM "User" ORDER BY username') as $user) {
-            echo "{$user['username']}\t{$user['role']}\t{$user['createdAt']}\n";
+        foreach (db()->query('SELECT username, role, createdAt, disabledAt FROM "User" ORDER BY username') as $user) {
+            $status = $user['disabledAt'] === null ? '' : "\tgesperrt";
+            echo "{$user['username']}\t{$user['role']}\t{$user['createdAt']}$status\n";
         }
         break;
 

@@ -6,7 +6,7 @@ Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.1.0/),
 die Versionierung folgt [Semantic Versioning](https://semver.org/lang/de/).
 Solange die Version unter 1.0.0 liegt, können sich Datenmodell und API jederzeit ändern.
 
-## [Unveröffentlicht]
+## [0.1.0] – 2026-10-08
 
 ### Hinzugefügt
 - **Passkeys:** Unter Profil → Anmeldung & Sicherheit Passkeys anlegen, umbenennen und entfernen;
@@ -22,6 +22,13 @@ Solange die Version unter 1.0.0 liegt, können sich Datenmodell und API jederzei
 - Detailseite: Fotogalerie mit Vollbildansicht (Blättern per Pfeiltasten oder Wischen), Fotos per Drag & Drop
   hinzufügen, Link „Auf Karte zeigen“ zur Adresse (OpenStreetMap).
 - Hell- und Dunkelmodus nach Systemeinstellung.
+- **Benutzerverwaltung:** Admins können Benutzer sperren und entsperren (gesperrte Benutzer werden sofort
+  abgemeldet und können sich weder per Passwort noch per Passkey anmelden), löschen (samt Zielen, Fotos und
+  Passkeys; zur Sicherheit muss der Benutzername eingetippt werden) und ein neues Passwort erzeugen.
+  Das eigene Konto ist davon ausgenommen. Neue Endpunkte `PUT`/`DELETE users/<id>` und `POST users/<id>/password`;
+  neue Spalte `User.disabledAt` (wird automatisch ergänzt). `server/cli.php list-users` zeigt gesperrte Benutzer.
+- „Wohin heute?“: Ein Würfel in der Übersicht schlägt ein zufälliges, noch nicht besuchtes Ziel aus der
+  aktuellen Auswahl vor.
 
 ### Geändert
 - Oberfläche überarbeitet: Navigation oben (Desktop) bzw. unten mit hervorgehobenem „Neu“-Button (Mobil),
@@ -33,6 +40,8 @@ Solange die Version unter 1.0.0 liegt, können sich Datenmodell und API jederzei
 - Einrichtung und Passwortänderung fragen das neue Passwort zur Sicherheit doppelt ab.
 - Nach dem Anlegen eines Ziels geht es direkt zur Detailseite, um Fotos hinzuzufügen; die Übersicht merkt sich
   beim Zurückkehren Filter und Scrollposition.
+- Beim Anlegen eines Benutzers erzeugt die App das Passwort selbst und zeigt es einmalig mit Kopier-Button an.
+  Die API akzeptiert weiterhin ein selbst gewähltes `password`.
 
 ### Behoben
 - Fehlt PHP die Erweiterung `pdo_sqlite`, zeigt die App (und `server/cli.php`) eine verständliche Meldung
@@ -115,6 +124,7 @@ Erste versionierte Veröffentlichung. Die App läuft jetzt ohne npm, Framework u
 Ursprüngliche, nicht versionierte Fassung als Next.js-PWA mit Prisma, Login, Ausflugszielen, Tags und
 Bild-Upload-API (Commit [`96d0982`](https://github.com/listiges-kaenguru/ausflugsziele/commit/96d0982)).
 
+[0.1.0]: https://github.com/listiges-kaenguru/ausflugsziele/compare/v0.0.3...v0.1.0
 [0.0.3]: https://github.com/listiges-kaenguru/ausflugsziele/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/listiges-kaenguru/ausflugsziele/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/listiges-kaenguru/ausflugsziele/releases/tag/v0.0.1
