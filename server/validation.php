@@ -142,3 +142,15 @@ function validate_tag(array $body): string
     }
     return $name;
 }
+
+function validate_passkey_name(array $body): string
+{
+    $name = trim(string_field($body, 'name') ?? '');
+    if ($name === '') {
+        return 'Passkey';
+    }
+    if (text_length($name) > 60) {
+        validation_failed(['name' => 'Maximal 60 Zeichen erlaubt']);
+    }
+    return $name;
+}

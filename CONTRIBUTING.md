@@ -11,7 +11,7 @@ Deshalb gilt:
 - **Keine** Paketmanager (npm, Composer, …), Frameworks, Bundler oder Transpiler.
 - **Keine** extern eingebundenen Skripte, Stylesheets oder Schriften (CDNs), die Content-Security-Policy lässt sie ohnehin nicht zu.
 - Backend: nur PHP-Bordmittel ab **PHP 8.1** und die Erweiterung `pdo_sqlite`.
-  Optionale Erweiterungen (z. B. `mbstring`) nur mit Fallback verwenden.
+  Optionale Erweiterungen (z. B. `mbstring`, `openssl` für Passkeys) nur mit Fallback verwenden.
 - Frontend: nur Standard-Browser-APIs, keine Inline-Skripte oder `style`-Attribute im HTML.
 
 ## Lokale Entwicklung
@@ -44,6 +44,7 @@ docker run --rm -p 8080:80 -v "$PWD":/var/www/html php:8.1-apache
 | `api.php` | Router und alle API-Endpunkte |
 | `server/bootstrap.php` | Konfiguration, Datenbank, Schema, Session, Antwort-Helfer |
 | `server/validation.php` | Eingabeprüfung |
+| `server/webauthn.php` | Passkeys: WebAuthn-Prüfung, CBOR- und COSE-Auswertung (benötigt `openssl`) |
 | `server/cli.php` | Wartung über die Kommandozeile |
 | `data/` | Laufzeitdaten, nicht versioniert (außer `.htaccess`) |
 
@@ -73,6 +74,9 @@ docker run --rm -p 8080:80 -v "$PWD":/var/www/html php:8.1-apache
 1. PHP-Syntax prüfen: `for f in api.php server/*.php; do php -l "$f"; done`
 2. Die betroffenen Abläufe im Browser durchspielen, mindestens:
    Einrichtung bzw. Login, Ziel anlegen/bearbeiten/löschen, Suche, Bild hochladen, Profil, Abmelden.
+   Bei Änderungen an der Anmeldung zusätzlich: Passkey anlegen, damit anmelden und wieder entfernen.
+   Ohne passendes Gerät hilft der virtuelle Authenticator der Chrome-Entwicklertools
+   (*Weitere Tools → WebAuthn*).
 3. Bei API-Änderungen die Tabelle im [README](README.md#api) anpassen.
 4. Einen Eintrag unter `## [Unveröffentlicht]` im [CHANGELOG](CHANGELOG.md) ergänzen
    (Abschnitt anlegen, falls er fehlt).

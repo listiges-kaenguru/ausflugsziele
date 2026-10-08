@@ -61,6 +61,7 @@ function db(): PDO
 }
 
 // Entspricht dem bisherigen Prisma-Schema, damit bestehende Datenbanken weiter funktionieren.
+// Neue Tabellen (z. B. Passkey) kommen nur additiv hinzu.
 function migrate(PDO $pdo): void
 {
     $pdo->exec(<<<'SQL'
@@ -117,12 +118,27 @@ function migrate(PDO $pdo): void
             "count" INTEGER NOT NULL,
             "resetAt" INTEGER NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS "Passkey" (
+            "id" TEXT NOT NULL PRIMARY KEY,
+            "userId" TEXT NOT NULL,
+            "credentialId" TEXT NOT NULL,
+            "publicKey" TEXT NOT NULL,
+            "algorithm" INTEGER NOT NULL,
+            "signCount" INTEGER NOT NULL DEFAULT 0,
+            "name" TEXT NOT NULL,
+            "transports" TEXT,
+            "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            "lastUsedAt" DATETIME,
+            CONSTRAINT "Passkey_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+        );
         CREATE UNIQUE INDEX IF NOT EXISTS "User_username_key" ON "User"("username");
         CREATE INDEX IF NOT EXISTS "Destination_createdBy_idx" ON "Destination"("createdBy");
         CREATE INDEX IF NOT EXISTS "Destination_createdAt_idx" ON "Destination"("createdAt");
         CREATE UNIQUE INDEX IF NOT EXISTS "Tag_name_key" ON "Tag"("name");
         CREATE INDEX IF NOT EXISTS "DestinationTag_tagId_idx" ON "DestinationTag"("tagId");
         CREATE INDEX IF NOT EXISTS "DestinationImage_destinationId_idx" ON "DestinationImage"("destinationId");
+        CREATE UNIQUE INDEX IF NOT EXISTS "Passkey_credentialId_key" ON "Passkey"("credentialId");
+        CREATE INDEX IF NOT EXISTS "Passkey_userId_idx" ON "Passkey"("userId");
         SQL);
 }
 

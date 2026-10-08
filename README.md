@@ -14,6 +14,7 @@ das Frontend ist reines HTML/CSS/JavaScript, das Backend reines PHP mit SQLite.
 ## Voraussetzungen
 - Webserver mit PHP **8.1 oder neuer** (z. B. Apache, nginx + PHP-FPM, oder gewöhnliches Webhosting)
 - PHP-Erweiterung `pdo_sqlite` (bei fast allen Hostern standardmäßig aktiv)
+- Optional: PHP-Erweiterung `openssl` für die Anmeldung mit Passkeys (ebenfalls fast überall aktiv)
 - Schreibrechte für PHP im Ordner `data/`
 
 ## Installation
@@ -29,6 +30,16 @@ das Frontend ist reines HTML/CSS/JavaScript, das Backend reines PHP mit SQLite.
 4. Weitere Benutzer legt ein Admin unter **Profil → Benutzer** an.
 
 Für den Betrieb im Internet unbedingt HTTPS verwenden.
+
+### Passkeys
+Benutzer können unter **Profil → Anmeldung & Sicherheit** Passkeys anlegen und sich damit ohne Passwort
+anmelden (Fingerabdruck, Gesichtserkennung, Geräte-PIN oder Passwortmanager). Das Passwort bleibt als
+Alternative erhalten. Voraussetzungen:
+- Die App wird über **HTTPS unter einem Domainnamen** aufgerufen – lokal genügt `http://localhost`,
+  IP-Adressen wie `127.0.0.1` funktionieren nicht.
+- Passkeys sind an den Hostnamen gebunden, unter dem sie angelegt wurden. Zieht die App auf eine andere
+  Domain um, müssen sie neu angelegt werden; die Anmeldung per Passwort funktioniert weiterhin.
+- Ohne die PHP-Erweiterung `openssl` blendet die App Passkeys aus.
 
 ### Apache
 Die mitgelieferten `.htaccess`-Dateien sperren `server/` und `data/` und setzen Sicherheits-Header.
@@ -106,12 +117,17 @@ weiterverwendet werden; bestehende Passwörter bleiben gültig. Bereits hochgela
 Alle Endpunkte liegen unter `api.php?r=<pfad>` und antworten mit
 `{ "success": true, "data": … }` bzw. `{ "success": false, "error": { "code", "message" } }`.
 Schreibende Anfragen benötigen den Header `X-Requested-With: fetch`.
+Binärdaten der Passkey-Endpunkte (Challenge, Schlüssel-IDs, Antworten des Browsers) sind Base64URL-kodiert.
 
 | Methode | Pfad | Beschreibung |
 | --- | --- | --- |
 | GET | `me` | Angemeldeter Benutzer und ob die Ersteinrichtung aussteht |
 | POST | `setup` | Ersten Admin anlegen (nur solange es keine Benutzer gibt) |
 | POST | `login`, `logout`, `change-password` | Anmeldung und Passwort |
+| POST | `passkey-login/options`, `passkey-login` | Anmeldung per Passkey: Challenge abrufen / Antwort des Browsers prüfen |
+| GET/POST | `passkeys` | Eigene Passkeys auflisten / neuen Passkey speichern |
+| POST | `passkeys/options` | Optionen zum Anlegen eines Passkeys |
+| PUT/DELETE | `passkeys/<id>` | Passkey umbenennen / entfernen |
 | GET/POST | `destinations` | Ziele auflisten (Filter: `search`, `favorite`, `visited`, `minRating` (1–5), `tag[]` – mehrfach angebbar, Treffer haben alle Tags) / anlegen |
 | GET/PUT/DELETE | `destinations/<id>` | Ziel lesen / ändern / löschen |
 | GET/POST | `tags` | Tags auflisten / anlegen |
@@ -124,7 +140,7 @@ Schreibende Anfragen benötigen den Header `X-Requested-With: fetch`.
 ## Projektstruktur
 - `index.html`, `assets/` – Frontend (Single-Page-App mit Hash-Routing)
 - `api.php` – JSON-API
-- `server/` – PHP-Hilfsfunktionen, Validierung und Kommandozeilen-Skript
+- `server/` – PHP-Hilfsfunktionen, Validierung, Passkeys (WebAuthn) und Kommandozeilen-Skript
 - `data/` – Datenbank, Sessions und Uploads (wird automatisch angelegt, nicht öffentlich)
 
 ## Mitwirken
