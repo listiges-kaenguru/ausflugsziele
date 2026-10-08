@@ -49,6 +49,11 @@ function db(): PDO
 {
     static $pdo = null;
     if ($pdo === null) {
+        // Fehlt die Erweiterung, scheitert „new PDO“ sonst nur mit „Interner Fehler“.
+        if (!class_exists(PDO::class) || !in_array('sqlite', PDO::getAvailableDrivers(), true)) {
+            error_log('Ausflugsziele: PHP-Erweiterung pdo_sqlite fehlt (php ' . PHP_VERSION . ', ' . (php_ini_loaded_file() ?: 'keine php.ini') . ')');
+            throw new ApiException(500, 'SETUP_ERROR', 'Auf dem Server fehlt die PHP-Erweiterung pdo_sqlite. Bitte installieren bzw. aktivieren (z. B. Paket php-pdo oder php-sqlite3, siehe README, Abschnitt Fehlersuche).');
+        }
         $pdo = new PDO('sqlite:' . data_dir() . '/app.db', null, null, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

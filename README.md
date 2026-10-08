@@ -49,6 +49,11 @@ PHP-Einstellungen (Fehlerausgabe aus, Uploads bis 10 MB) stehen in `.user.ini` (
 bzw. in `.htaccess` (mod_php). Lässt der Hoster das nicht zu, die Werte in dessen Verwaltungsoberfläche setzen.
 
 ### Fehlersuche
+**„Die App konnte nicht geladen werden: Auf dem Server fehlt die PHP-Erweiterung pdo_sqlite“**
+– PHP ist ohne SQLite-Unterstützung installiert. Prüfen mit `php -m | grep -i sqlite`, dann nachinstallieren,
+z. B. `sudo dnf install php-pdo` (Fedora/RHEL) bzw. `sudo apt install php-sqlite3` (Debian/Ubuntu),
+und den Webserver bzw. `php -S` neu starten. Bei Webhostern die Erweiterung in der Verwaltungsoberfläche aktivieren.
+
 **„Die App konnte nicht geladen werden: Der Webserver darf nicht in den Ordner data/ schreiben“**
 – Schritt 2 der Installation fehlt. Bei aktivem SELinux (Fedora, RHEL) zusätzlich:
 ```sh

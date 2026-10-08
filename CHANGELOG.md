@@ -34,6 +34,10 @@ Solange die Version unter 1.0.0 liegt, können sich Datenmodell und API jederzei
 - Nach dem Anlegen eines Ziels geht es direkt zur Detailseite, um Fotos hinzuzufügen; die Übersicht merkt sich
   beim Zurückkehren Filter und Scrollposition.
 
+### Behoben
+- Fehlt PHP die Erweiterung `pdo_sqlite`, zeigt die App (und `server/cli.php`) eine verständliche Meldung
+  statt „Interner Fehler“. README um einen Abschnitt zur Fehlersuche ergänzt.
+
 ## [0.0.3] – 2026-10-05
 
 ### Hinzugefügt
